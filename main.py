@@ -1,3 +1,5 @@
+# By NDRAEY
+
 import aiohttp as aih
 import asyncio
 import sys
@@ -7,10 +9,10 @@ import aiofiles
 
 works = []
 
-async def download(session,url,name):
+async def download(session, url, name):
     #print("Starting download "+name)
     if name in works:
-        name=name.split(".")[0]+str(random.randint(88888,777777))+"."+name.split(".")[-1]
+        name = name.split(".")[0]+str(random.randint(88888,777777))+"."+name.split(".")[-1]
     works.append(name)
     chunksize = 8192
     await asyncio.sleep(0.5)
@@ -33,19 +35,19 @@ async def download(session,url,name):
             print(" "*38, end='')
             #print("Download of "+name+" OKAY!")
 
-async def getrawdata():
+async def getrawdata(query):
     async with aih.ClientSession() as ses:
-        async with ses.get("https://tenor.com/search/"+sys.argv[-1]+"-gifs") as resp:
+        async with ses.get("https://tenor.com/search/"+query+"-gifs") as resp:
             return await resp.text()
 
-async def getJSON():
-    e = await getrawdata()
+async def getJSON(query):
+    e = await getrawdata(query)
     e=e[e.find("<script id=\"store-cache\" type=\"text/x-cache\" nonce="):]
     e = json.loads(e[e.find("{"):e.find("</script>")])
     return e
 
-async def geturls():
-    e = await getrawdata()
+async def geturls(query):
+    e = await getrawdata(query)
     e=e[e.find("<script id=\"store-cache\" type=\"text/x-cache\" nonce="):]
     e = json.loads(e[e.find("{"):e.find("</script>")])['gifs']['search']
     e = e[list(e.keys())[0]]['results']
@@ -56,18 +58,26 @@ async def geturls():
 
 async def main():
     # TODO: Argparser, download mp4 files (they exists)
+
+    arg = ""
     if len(sys.argv[1:])==0:
-        print("Search query not specified... Exiting...")
-        exit()
-    urls = await geturls()
+        arg = input("Query> ")
+    else:
+        arg = sys.argv[1]
+    
+    urls = await geturls(arg)
     print("=====[Gotta download "+str(len(urls))+" GIFs!]=====")
+    
     async with aih.ClientSession() as session:
         print("Getting ready...")
-        tasks = []
         print("\033[2J")
-        for url in urls:
-            tasks.append(asyncio.ensure_future(download(session, url, url.split("/")[-1])))
 
-        result = await asyncio.gather(*tasks)
+        for i in range(len(urls)//8):
+            print("Downloading part", i)
+            tasks = []
+            for url in urls[i*8:(i+1)*8]:
+                tasks.append(asyncio.ensure_future(download(session, url, url.split("/")[-1])))
+
+            result = await asyncio.gather(*tasks)
 
 asyncio.run(main())
